@@ -46,17 +46,19 @@ standard_ackermann = np.arctan((0.5*pivot_centre_distance)/wheel_base)  # in rad
 
 #ackermann_deg = np.degrees(standard_ackermann)  
 
-ackermann_deg = 17
+ackermann_deg = 17.0
 
 
 ackermann_rad = np.radians(ackermann_deg)  
 
 
 
-distance = 0.10  #Select this.
+distance = 0.100  #Select this.
 
 #larger D has the effect of increasing the toe sensitivity, and reducing the difference between the inner and outer wheel angle
 
+
+#increasing D causes the optimim ackermann angle to slightly increase
 
 
 
@@ -266,52 +268,6 @@ ax2.set_xlabel('Corresponding turn radius (m)')
 # Plot 4: Error in inner wheel angle vs outer wheel angle for different ackermann values
 
 
-######################
-amin=14
-amax=20
-astep=0.5
-
-ackermann_values = np.arange(amin,amax,astep)
-
-######################
-
-fig, ax = plt.subplots()
-
-for ackermann_deg in ackermann_values:
-    ackermann_rad = np.radians(ackermann_deg)
-    u = distance * np.tan(ackermann_rad)
-    k = distance / np.cos(ackermann_rad)
-    t = pivot_centre_distance - 2 * u
-    
-    true_inner_wheel_angles = [true_inner(angle, k, t, pivot_centre_distance, wheel_base)[0] for angle in outer_wheel_angles]
-    ideal_inner_wheel_angles = [ideal_inner(angle, wheel_base, wheel_track)[0] for angle in outer_wheel_angles]
-    
-    angle_diff = [true_inner_wheel_angles[i] - ideal_inner_wheel_angles[i] for i in range(len(true_inner_wheel_angles))]
-    
-    ax.plot(outer_wheel_angles, angle_diff)
-    ax.text(outer_wheel_angles[-1], angle_diff[-1], f'{ackermann_deg:.2f}°', fontsize=8, verticalalignment='bottom')
-
-ax.set_xlabel('Outer wheel angle (degrees)')
-ax.set_ylabel('Error (true-ideal) in inner wheel angle (degrees)')
-ax.grid(True, which='both', linestyle='--', linewidth=0.5)
-
-# Add text for value of d
-textstr = f'd = {distance:.2f} m'
-props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-ax.text(0.05, 0.05, textstr, transform=ax.transAxes, fontsize=10,
-    verticalalignment='bottom', bbox=props)
-
-ax2 = ax.twiny()
-ax2.set_xlim(ax.get_xlim())
-ax2.set_xticks(outer_wheel_angles[::10])
-ax2.set_xticklabels([f'{r:.2f}' for r in R_values[::10]])
-ax2.set_xlabel('Corresponding turn radius (m)')
-
-
-
-
-plt.show()
-
 
 '''
 
@@ -407,8 +363,8 @@ true_inner_test = true_inner(outer_test, k, t, pivot_centre_distance,wheel_base)
 
 print('Ackermann angle:', round(ackermann_deg,3),'degrees')
 print('d = ', round(distance,3),'m')
-print('w = ',round(pivot_centre_distance,3), 'm')
-print('t = ',round(t,3), 'm')
+print('w (p)ivot centre distance) = ',round(pivot_centre_distance,3), 'm')
+print('t (tierod length) = ',round(t,3), 'm')
 print('k = ',round(k,3), 'm')
 print()
 
@@ -421,6 +377,11 @@ print()
 print('For an outer angle of', round(outer_test,3), 'degrees')
 print('Geometric ideal inner wheel angle:', round(ideal_inner_test[0],3), 'degrees')
 print('True inner wheel angle:', round(true_inner_test[0],3), 'degrees')
+
+
+
+
+
 
 
 
