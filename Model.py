@@ -2,9 +2,77 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math as mt
 
+#Our parameters:
 
-###############################################################################################
+wheel_base = 1.3
+wheel_track = 0.5
 
+wheel_offset = 0.125
+pivot_centre_distance = wheel_track - 2*wheel_offset
+
+standard_ackermann = np.arctan((0.5*pivot_centre_distance)/wheel_base)  # in rad
+
+#Here, could use standard ackermann value, OR input custom:
+
+#ackermann_deg = np.degrees(standard_ackermann)  
+
+ackermann_deg = 14
+
+#the model says ~17.5 is the optimum
+#this model says ~18.5 was last year's optimum, but was 15 in reality
+#################################################
+#so ~14 is probably the real optimum for us...
+#also, last year's standard ackermann was 8, and ours is 7
+#so a 1 degree reduction in optimum seems reasonable
+#################################################
+
+ackermann_rad = np.radians(ackermann_deg)  
+
+distance = 0.09  #Select this.
+
+#larger D has the effect of increasing the toe sensitivity, and reducing the difference between the inner and outer wheel angle
+
+#increasing D causes the optimum ackermann angle to slightly increase
+
+####################################################
+
+#Last year's parameters:
+
+# wheel_base = 1.573 #semi-accurate, from monocoque drawing
+# wheel_track = 0.59  #accurate
+# mechanical_trail = 0.015  #accurate, from report
+# wheel_offset = 0.065 # estimate from CAD
+# pivot_centre_distance = wheel_track - 2*wheel_offset
+
+# ############
+# #standard_ackermann = np.arctan((0.5*pivot_centre_distance)/wheel_base)  # in rad
+
+# #ackermann_deg = np.rad2deg(standard_ackermann)
+# ############
+
+# ackermann_deg = 15  # 15 is optimal value, from report
+
+# ackermann_rad = np.radians(ackermann_deg)
+
+# distance = 0.055  #accurate, from report
+
+################################################
+
+u = distance*np.tan(ackermann_rad)
+
+k = distance/np.cos(ackermann_rad)
+
+t = pivot_centre_distance - 2*u
+
+#Static coordinates of the four-bar linkage:
+
+OuterConnection = [ u, round(-distance,4)]
+InnerConnection = [ round(pivot_centre_distance -u ,4), round(-distance,4)]
+
+##########################################################################################
+##########################################################################################
+
+#Functions:
 
 def freudenstein_equation(outer_turn_angle, L1, L2, L3, L4):
     
@@ -28,81 +96,45 @@ def freudenstein_equation(outer_turn_angle, L1, L2, L3, L4):
     
     return theta4
 
+def true_inner(outer, k, t, pcd,wheel_base):
+    # Convert outer wheel angle to radians
 
-########################################################################
+    R_values = wheel_base/np.tan(np.radians(outer))
+    
+    
+    # Calculate the corresponding theta4 value using the Freudenstein equation
+    theta4 = freudenstein_equation(outer, pcd, k, t, k)
+    
+    # Calculate the true inner wheel angle
+    true_inner_wheel_angle = -(theta4 - (270 - ackermann_deg))
+    
+    return true_inner_wheel_angle, R_values
 
+def ideal_inner(outer, wheel_base, wheel_track):
+    outer_rad = np.radians(outer)
+    
+    R = wheel_base/np.tan(outer_rad)
+    
+    inner_rad = np.arctan(wheel_base/(R - wheel_track))
+    inner_deg = np.degrees(inner_rad)
+    return inner_deg, R
 
-
-wheel_base = 1.3
-wheel_track = 0.5
-mechanical_trail = 0.01
-wheel_offset = 0.09
-pivot_centre_distance = wheel_track - 2*wheel_offset
-
-standard_ackermann = np.arctan((0.5*pivot_centre_distance)/wheel_base)  # in rad
-
-
-#Here, could use standard ackermann value, OR input custom:
-
-#ackermann_deg = np.degrees(standard_ackermann)  
-
-ackermann_deg = 17.0
-
-
-ackermann_rad = np.radians(ackermann_deg)  
-
-
-
-distance = 0.100  #Select this.
-
-#larger D has the effect of increasing the toe sensitivity, and reducing the difference between the inner and outer wheel angle
-
-
-#increasing D causes the optimim ackermann angle to slightly increase
-
-
-
-##########################
-
-#Last year's parameters:
-
-'''
-
-wheel_base = 1.5 #Guestimate, cant remember where exact value is
-wheel_track = 0.59  #accurate
-mechanical_trail = 0.015  #accurate, from report
-wheel_offset = 0.065 # estimate from CAD
-ackermann_rad = 0.261237  #accurate, from report
-
-ackermann_deg = np.degrees(ackermann_rad)
-
-pivot_centre_distance = wheel_track - 2*wheel_offset
-
-distance = 0.055  #accurate, from report
-
-'''
-
-############
-
-
-
-u = distance*np.tan(ackermann_rad)
-
-k = distance/np.cos(ackermann_rad)
-
-t = pivot_centre_distance - 2*u
-
-#Static coordinates of the four-bar linkage:
-
-OuterConnection = [ u, round(-distance,4)]
-InnerConnection = [ round(pivot_centre_distance -u ,4), round(-distance,4)]
-
-
-####################
-#Diagram Plot:
-
-
-
+def toe_sensitivity(dt,d,a):
+        
+    a_rad = np.radians(a)
+    
+    xo = d*np.tan(a_rad)
+    yo = -d
+    
+    
+    xt = xo - (0.5*dt)
+    yt = -np.sqrt(k**2  - xt**2)
+    dxy = np.sqrt( (xo - xt)**2 + ( yo - yt)**2)
+    
+    deltaT_rad = np.arccos( 1-( dxy/(2*k) )**2 )
+    deltaT_deg = np.degrees(deltaT_rad)
+        
+    return deltaT_deg
 
 def plot_four_bar_linkage(turn_angle, theta4, ackermann_deg, L1, L2, L3, L4):
     
@@ -132,9 +164,15 @@ def plot_four_bar_linkage(turn_angle, theta4, ackermann_deg, L1, L2, L3, L4):
     plt.text((D[0] + C[0]) / 2 - 0.03, (D[1] + C[1]) / 2, 'L4 = k', fontsize=12, ha='center')
     plt.text((C[0] + A[0]) / 2, (C[1] + A[1]) / 2 + 0.005, 'L1 = w', fontsize=12, ha='center')
     
+    # Label the coordinates of the tierod pickup points with their coordinates
+    plt.text(A[0] + 0.09, A[1] + 0.01, f'A ({A[0]:.3f}, {A[1]:.3f})', fontsize=12, ha='right')
+    plt.text(B[0] +0.08, B[1]-0.02, f'B ({B[0]:.3f}, {B[1]:.3f})', fontsize=12, ha='right')
+    plt.text(C[0], C[1]+0.01, f'C ({C[0]:.3f}, {C[1]:.3f})', fontsize=12, ha='right')
+    plt.text(D[0], D[1] -0.02, f'D ({D[0]:.3f}, {D[1]:.3f})', fontsize=12, ha='right')
+    
     # Display turn angle, ackermann angle, and value of d in the top corner
     d_value = L2 * np.cos(np.radians(ackermann_deg))
-    plt.text(0.95, 0.95, f'Turn angle: {turn_angle:.2f}°\nAckermann angle: {ackermann_deg:.2f}°\nd = {d_value:.2f} m', fontsize=12, ha='right', va='top', transform=plt.gca().transAxes)
+    plt.text(0.95, 0.95, f'Visualized turn angle: {turn_angle:.2f}°\nAckermann angle: {ackermann_deg:.2f}°\nd = {d_value:.2f} m', fontsize=12, ha='right', va='top', transform=plt.gca().transAxes)
     
     plt.xlabel('X')
     plt.ylabel('Y')
@@ -142,6 +180,58 @@ def plot_four_bar_linkage(turn_angle, theta4, ackermann_deg, L1, L2, L3, L4):
     plt.grid(True)
     plt.axis('equal')
     plt.show()
+
+def plot_inner_wheel_angles(outer_wheel_angles, true_inner_wheel_angles, ideal_inner_wheel_angles, ackermann_deg, distance, R_values):
+    fig, ax1 = plt.subplots()
+
+    ax1.plot(outer_wheel_angles, true_inner_wheel_angles, label='True inner wheel angle')
+    ax1.plot(outer_wheel_angles, ideal_inner_wheel_angles, label='Ideal inner wheel angle')
+    ax1.plot(outer_wheel_angles, outer_wheel_angles, 'k--', label='Parallel steering')  # Dotted line y = x
+
+    ax1.set_xlabel('Outer wheel angle (degrees)')
+    ax1.set_ylabel('Inner wheel angle (degrees)')
+
+    ax1.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax1.legend(loc='upper left')
+
+    # Add text for ackermann angle and value of d
+    textstr = f'a = {ackermann_deg:.2f}°\nd = {distance:.2f} m'
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    ax1.text(0.05, 0.75, textstr, transform=ax1.transAxes, fontsize=10,
+             verticalalignment='top', bbox=props)
+
+    ax2 = ax1.twiny()
+    ax2.set_xlim(ax1.get_xlim())
+    ax2.set_xticks(outer_wheel_angles[::10])
+    ax2.set_xticklabels([f'{r:.2f}' for r in R_values[::10]])
+    ax2.set_xlabel('Corresponding turn radius (m)')
+
+    plt.show()
+
+def plot_error_in_inner_wheel_angle(outer_wheel_angles, angle_diff, ackermann_deg, distance, R_values):
+    fig, ax = plt.subplots()
+
+    ax.plot(outer_wheel_angles, angle_diff, label='Error in inner wheel angle')
+    ax.set_xlabel('Outer wheel angle (degrees)')
+    ax.set_ylabel('(True - Ideal) inner wheel angle (degrees)')
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+    # Add text for ackermann angle and value of d
+    textstr = f'a = {ackermann_deg:.2f}°\nd = {distance:.2f} m'
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    ax.text(0.8, 0.9, textstr, transform=ax.transAxes, fontsize=10,
+            verticalalignment='top', bbox=props)
+
+    ax2 = ax.twiny()
+    ax2.set_xlim(ax.get_xlim())
+    ax2.set_xticks(outer_wheel_angles[::10])
+    ax2.set_xticklabels([f'{r:.2f}' for r in R_values[::10]])
+    ax2.set_xlabel('Corresponding turn radius (m)')
+
+    plt.show()
+
+####################################################
+#Plot 1: Diagram of four-bar linkage
 
 L1 = pivot_centre_distance  # Length of bar 1
 L2 = k  
@@ -151,43 +241,7 @@ L4 = k
 freeze_o = 0    # turn angle for freezeframe diagram
 # Note - only logical to use positive values here as we are defining the left pivot as the outside wheel - choosing -ve values would make this the inside wheel...
 
-
 freeze_i = freudenstein_equation(freeze_o, L1, L2, L3, L4)
-
-
-
-
-#####################
-
-
-##########################################################################################
-##########################################################################################
-
-
-def true_inner(o, k, t, pcd,wheel_base):
-    # Convert outer wheel angle to radians
-
-    R_values = wheel_base/np.tan(np.radians(o))
-    
-    
-    # Calculate the corresponding theta4 value using the Freudenstein equation
-    theta4 = freudenstein_equation(o, pcd, k, t, k)
-    
-    # Calculate the true inner wheel angle
-    true_inner_wheel_angle = -(theta4 - (270 - ackermann_deg))
-    
-    return true_inner_wheel_angle, R_values
-
-def ideal_inner(o, wheel_base, wheel_track):
-    outer_rad = np.radians(o)
-    
-    R = wheel_base/np.tan(outer_rad)
-    
-    inner_rad = np.arctan(wheel_base/(R - wheel_track))
-    inner_deg = np.degrees(inner_rad)
-    return inner_deg, R
-
-
 
 #Plot 1: Diagram of four-bar linkage
 
@@ -211,146 +265,42 @@ angle_diff = [  (true_inner_wheel_angles[i] - ideal_inner_wheel_angles[i]) for i
 
 R_values = [ideal_inner(angle, wheel_base, wheel_track)[1] for angle in outer_wheel_angles]
 
-
-
 #######################
 #Plot 2: True/ideal inner wheel angle vs outer wheel angle
 
-fig, ax1 = plt.subplots()
-
-ax1.plot(outer_wheel_angles, true_inner_wheel_angles, label='True inner wheel angle')
-ax1.plot(outer_wheel_angles, ideal_inner_wheel_angles, label='Ideal inner wheel angle')
-ax1.plot(outer_wheel_angles, outer_wheel_angles, 'k--', label='Parallel steering')  # Dotted line y = x
-
-ax1.set_xlabel('Outer wheel angle (degrees)')
-ax1.set_ylabel('Inner wheel angle (degrees)')
-
-ax1.grid(True, which='both', linestyle='--', linewidth=0.5)
-ax1.legend(loc='upper left')
-
-# Add text for ackermann angle and value of d
-textstr = f'a = {ackermann_deg:.2f}°\nd = {distance:.2f} m'
-props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-ax1.text(0.05, 0.75, textstr, transform=ax1.transAxes, fontsize=10,
-    verticalalignment='top', bbox=props)
-
-ax2 = ax1.twiny()
-ax2.set_xlim(ax1.get_xlim())
-ax2.set_xticks(outer_wheel_angles[::10])
-ax2.set_xticklabels([f'{r:.2f}' for r in R_values[::10]])
-ax2.set_xlabel('Corresponding turn radius (m)')
-
-plt.show()
+plot_inner_wheel_angles(outer_wheel_angles, true_inner_wheel_angles, ideal_inner_wheel_angles, ackermann_deg, distance, R_values)
 
 ########################################
 #Plot 3: Error in inner wheel angle vs outer wheel angle
 
-
-fig, ax = plt.subplots()
-
-ax.plot(outer_wheel_angles, angle_diff, label='Error in inner wheel angle')
-ax.set_xlabel('Outer wheel angle (degrees)')
-ax.set_ylabel('(True - Ideal) inner wheel angle (degrees)')
-ax.grid(True, which='both', linestyle='--', linewidth=0.5)
-
-# Add text for ackermann angle and value of d
-textstr = f'a = {ackermann_deg:.2f}°\nd = {distance:.2f} m'
-props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=10,
-    verticalalignment='top', bbox=props)
-
-ax2 = ax.twiny()
-ax2.set_xlim(ax.get_xlim())
-ax2.set_xticks(outer_wheel_angles[::10])
-ax2.set_xticklabels([f'{r:.2f}' for r in R_values[::10]])
-ax2.set_xlabel('Corresponding turn radius (m)')
+plot_error_in_inner_wheel_angle(outer_wheel_angles, angle_diff, ackermann_deg, distance, R_values)
 
 # Plot 4: Error in inner wheel angle vs outer wheel angle for different ackermann values
 
-
-
-'''
-
-#Plot for varying d values:
-def plot_error_vs_d(d_values, ackermann_rad, pivot_centre_distance, wheel_base, wheel_track, outer_wheel_angles):
-
-    fig, ax = plt.subplots()
-
-    for d in d_values:
-        u = d * np.tan(ackermann_rad)
-        k = d / np.cos(ackermann_rad)
-        t = pivot_centre_distance - 2 * u
-            
-        true_inner_wheel_angles = [true_inner(angle, k, t, pivot_centre_distance, wheel_base)[0] for angle in outer_wheel_angles]
-        ideal_inner_wheel_angles = [ideal_inner(angle, wheel_base, wheel_track)[0] for angle in outer_wheel_angles]
-            
-        angle_diff = [np.abs(true_inner_wheel_angles[i] - ideal_inner_wheel_angles[i]) for i in range(len(true_inner_wheel_angles))]
-            
-        ax.plot(outer_wheel_angles, angle_diff, label=f'd = {d:.2f} m')
-
-    ax.set_xlabel('Outer wheel angle (degrees)')
-    ax.set_ylabel('Error in inner wheel angle (degrees)')
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
-    ax.legend(title='Distance d')
-
-    # Add text for ackermann angle
-    ackermann_deg = np.degrees(ackermann_rad)
-    textstr = f'a = {ackermann_deg:.2f}°'
-    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-    ax.text(0.8, 0.1, textstr, transform=ax.transAxes, fontsize=10,
-            verticalalignment='top', bbox=props)
-
-    ax2 = ax.twiny()
-    ax2.set_xlim(ax.get_xlim())
-    ax2.set_xticks(outer_wheel_angles[::10])
-    ax2.set_xticklabels([f'{r:.2f}' for r in R_values[::10]])
-    ax2.set_xlabel('Corresponding turn radius (m)')
-
-    plt.show()
-
-
-dmin = 0.05
-dmax = 0.15
-dstep = 0.02
-
-d_values = np.arange(dmin, dmax + dstep, dstep)
-
-plot_error_vs_d(d_values, ackermann_rad, pivot_centre_distance, wheel_base, wheel_track, outer_wheel_angles)
-
-'''
-
 ##########################################
 
+dt = 0.001 #in METRES
 
+TS = toe_sensitivity(dt,distance,ackermann_deg)
 
-def toe_sensitivity(dt,t, d,a):
-    
-    a_rad = np.radians(a)
-    
-    xo = d*np.tan(a_rad)
-    yo = -d
-    
-    
-    xt = xo - (0.5*dt)
-    yt = -np.sqrt(k**2  - xt**2)
-    dxy = np.sqrt( (xo - xt)**2 + ( yo - yt)**2)
-    
-    deltaT_rad = np.arccos( 1-( dxy/(2*k) )**2 )
-    deltaT_deg = np.degrees(deltaT_rad)
-    
-    sensitivity = deltaT_deg/(dt*1000)  # degree per mm
-    
-    #note, value of sensitivity naturally unchanged for varying dt
-    
-    return sensitivity, deltaT_deg
-
-dt = 0.005
-
-TS = toe_sensitivity(dt, t,distance,ackermann_deg)
-
-print('Toe adjustment sensitivity:', round(TS[0],5), 'degrees per mm')
-print('dt =',dt*1000,'mm:', round(TS[1],3), 'degrees')
+print('dt =',dt,'m:', round(TS,3), 'degrees')
 print()
+
+dmin = 0.05
+dmax = 0.12
+dstep = 0.01
+dval = np.arange(dmin,dmax,dstep)
+
+TS_val = [toe_sensitivity(dt,dist,ackermann_deg) for dist in dval]
+
+#Last Year:
+# dt=0.001m, change in wheel angle = 0.368 degrees
+
+#This year:
+#dt=0.001m, 
+#d=0.08: deltaToe = 0.253 degrees
+#d=0.09: deltaToe = 0.225 degrees
+#d=0.10: deltaToe = 0.202 degrees
 
 
 ##################################################
@@ -379,13 +329,6 @@ print('Geometric ideal inner wheel angle:', round(ideal_inner_test[0],3), 'degre
 print('True inner wheel angle:', round(true_inner_test[0],3), 'degrees')
 
 
-
-
-
-
-
-
-
 #Throughout, we assume the outer wheel is always at the ideal angle, and the inner angle is what deviates from ideal.
 
 # Calculate ideal inner wheel angles based on Ackermann's formula
@@ -393,10 +336,5 @@ print('True inner wheel angle:', round(true_inner_test[0],3), 'degrees')
 #So location of inner wheel is R - wheel_track
 
 #We expect that the difference between the ideal and true inner wheel angle is broadly indicative of cornering losses...
-
-
-
-#The following function carries out a crude integral of the error in inner wheel angle over the range of outer wheel angles, for a range of ackermann angles.#
-#The idea here is to identify which ackermann angle gives the smallest integrated error across a given range of turn angles, which we expect to be an indiaction of lowest cornering losses.
 
 
