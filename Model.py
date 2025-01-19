@@ -16,7 +16,7 @@ standard_ackermann = np.arctan((0.5*pivot_centre_distance)/wheel_base)  # in rad
 
 #ackermann_deg = np.degrees(standard_ackermann)  
 
-ackermann_deg = 15.8
+ackermann_deg = 16.0
 
 ackermann_rad = np.radians(ackermann_deg)  
 
