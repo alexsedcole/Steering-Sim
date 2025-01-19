@@ -4,7 +4,7 @@ import math as mt
 
 #Our parameters:
 
-wheel_base = 1.3
+wheel_base = 1.350  #recently increased from 1300mm to 1350mm
 wheel_track = 0.5
 
 wheel_offset = 0.125
@@ -12,19 +12,11 @@ pivot_centre_distance = wheel_track - 2*wheel_offset
 
 standard_ackermann = np.arctan((0.5*pivot_centre_distance)/wheel_base)  # in rad
 
-#Here, could use standard ackermann value, OR input custom:
+#Here, could use standard ackermann value, OR select one to minimize error for inner wheel angle.
 
 #ackermann_deg = np.degrees(standard_ackermann)  
 
-ackermann_deg = 14
-
-#the model says ~17.5 is the optimum
-#this model says ~18.5 was last year's optimum, but was 15 in reality
-#################################################
-#so ~14 is probably the real optimum for us...
-#also, last year's standard ackermann was 8, and ours is 7
-#so a 1 degree reduction in optimum seems reasonable
-#################################################
+ackermann_deg = 15.8
 
 ackermann_rad = np.radians(ackermann_deg)  
 
@@ -36,7 +28,7 @@ distance = 0.09  #Select this.
 
 ####################################################
 
-#Last year's parameters:
+#Last year's parameters:  (Comment out above values for this year)
 
 # wheel_base = 1.573 #semi-accurate, from monocoque drawing
 # wheel_track = 0.59  #accurate
@@ -266,7 +258,7 @@ plot_four_bar_linkage(freeze_o, freeze_i,ackermann_deg, L1, L2, L3, L4)
 
 #####################
 
-steering_range = 10 #steering angle plot range / degrees
+steering_range = 15 #steering angle plot range / degrees
 
 outer_wheel_angles = np.linspace(0, steering_range, 100)
 
@@ -300,22 +292,16 @@ dt_values=np.arange(0,0.01,0.001)
 dval = [0.055,0.06,0.07,0.08,0.09,0.10,0.11,0.12,0.13,0.14,0.15]
 
 # Call the function to plot the graph
+
 plot_delta_toe_vs_dt(dt_values,dval,ackermann_deg)
 
 #Last Year:
 # dt=0.001m, change in wheel angle = 0.368 degrees
 
-#This year:
-#dt=0.001m, 
-#d=0.08: deltaToe = 0.253 degrees
-#d=0.09: deltaToe = 0.225 degrees
-#d=0.10: deltaToe = 0.202 degrees
-
-
 ##################################################
 #Test for a specific outer angle:
 
-outer_test = 5
+outer_test = 10
 
 ideal_inner_test = ideal_inner(outer_test, wheel_base, wheel_track)
 true_inner_test = true_inner(outer_test, k, t, pivot_centre_distance,wheel_base)
