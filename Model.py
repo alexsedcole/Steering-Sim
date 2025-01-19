@@ -72,7 +72,7 @@ InnerConnection = [ round(pivot_centre_distance -u ,4), round(-distance,4)]
 ##########################################################################################
 ##########################################################################################
 
-#Functions:
+#Calculation functions:
 
 def freudenstein_equation(outer_turn_angle, L1, L2, L3, L4):
     
@@ -119,22 +119,21 @@ def ideal_inner(outer, wheel_base, wheel_track):
     inner_deg = np.degrees(inner_rad)
     return inner_deg, R
 
-def toe_sensitivity(dt,d,a):
-        
-    a_rad = np.radians(a)
-    
-    xo = d*np.tan(a_rad)
+def calculate_delta_toe(dt, d, ackermann_deg):
+    a_rad = np.radians(ackermann_deg)
+    xo = d * np.tan(a_rad)
     yo = -d
+    kval = d / np.cos(a_rad)
     
+    xt = xo - (0.5 * dt)
+    yt = -np.sqrt(kval**2 - xt**2)
+    dxy = np.sqrt((xo - xt)**2 + (yo - yt)**2)
+    deltaT_rad = np.arccos(1 - (dxy / (2 * kval))**2)
     
-    xt = xo - (0.5*dt)
-    yt = -np.sqrt(k**2  - xt**2)
-    dxy = np.sqrt( (xo - xt)**2 + ( yo - yt)**2)
-    
-    deltaT_rad = np.arccos( 1-( dxy/(2*k) )**2 )
     deltaT_deg = np.degrees(deltaT_rad)
-        
     return deltaT_deg
+
+#Plotting functions:
 
 def plot_four_bar_linkage(turn_angle, theta4, ackermann_deg, L1, L2, L3, L4):
     
@@ -230,6 +229,24 @@ def plot_error_in_inner_wheel_angle(outer_wheel_angles, angle_diff, ackermann_de
 
     plt.show()
 
+def plot_delta_toe_vs_dt(dt_values, dval, ackermann_deg):
+    for dcheck in dval:
+        D = [calculate_delta_toe(dt, dcheck, ackermann_deg) for dt in dt_values]
+        plt.plot(dt_values*1000, D, label=f'd = {round(dcheck,3)} m')
+
+    plt.xlabel('Change in tierod length (mm)')
+    plt.ylabel('Change in toe (degrees)')
+    plt.title('Toe as a function of change in tierod length, and design parameter d')
+    plt.legend()
+    plt.grid(True)
+    
+    textstr = f'a = {ackermann_deg:.2f}°'
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    plt.text(0.5, 0.95, textstr, transform=plt.gca().transAxes, fontsize=10,
+             verticalalignment='top', horizontalalignment='right', bbox=props)
+    
+    plt.show()
+
 ####################################################
 #Plot 1: Diagram of four-bar linkage
 
@@ -275,23 +292,15 @@ plot_inner_wheel_angles(outer_wheel_angles, true_inner_wheel_angles, ideal_inner
 
 plot_error_in_inner_wheel_angle(outer_wheel_angles, angle_diff, ackermann_deg, distance, R_values)
 
-# Plot 4: Error in inner wheel angle vs outer wheel angle for different ackermann values
 
 ##########################################
 
-dt = 0.001 #in METRES
+dt_values=np.arange(0,0.01,0.001)
 
-TS = toe_sensitivity(dt,distance,ackermann_deg)
+dval = [0.055,0.06,0.07,0.08,0.09,0.10,0.11,0.12,0.13,0.14,0.15]
 
-print('dt =',dt,'m:', round(TS,3), 'degrees')
-print()
-
-dmin = 0.05
-dmax = 0.12
-dstep = 0.01
-dval = np.arange(dmin,dmax,dstep)
-
-TS_val = [toe_sensitivity(dt,dist,ackermann_deg) for dist in dval]
+# Call the function to plot the graph
+plot_delta_toe_vs_dt(dt_values,dval,ackermann_deg)
 
 #Last Year:
 # dt=0.001m, change in wheel angle = 0.368 degrees
@@ -311,11 +320,11 @@ outer_test = 5
 ideal_inner_test = ideal_inner(outer_test, wheel_base, wheel_track)
 true_inner_test = true_inner(outer_test, k, t, pivot_centre_distance,wheel_base)
 
-print('Ackermann angle:', round(ackermann_deg,3),'degrees')
-print('d = ', round(distance,3),'m')
-print('w (p)ivot centre distance) = ',round(pivot_centre_distance,3), 'm')
+print('a (ackermann angle):', round(ackermann_deg,3),'degrees')
+print('d (distance of pickup point behind front track) = ', round(distance,3),'m')
+print('w (pivot centre distance) = ',round(pivot_centre_distance,3), 'm')
 print('t (tierod length) = ',round(t,3), 'm')
-print('k = ',round(k,3), 'm')
+print('k (distance between kingpin and pickup point) = ',round(k,3), 'm')
 print()
 
 
