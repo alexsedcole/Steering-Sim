@@ -11,7 +11,7 @@ wheel_track = 0.5
 wheel_offset = 0.125
 pivot_centre_distance = wheel_track - 2*wheel_offset
 
-ackermann_deg = 15
+ackermann_deg = 14
 
 ackermann_rad = np.radians(ackermann_deg)  
 
@@ -357,7 +357,7 @@ plot_inner_wheel_angles(outer_wheel_angles, true_inner_wheel_angles, ideal_inner
 ########################################
 #Plot 3: Error in inner wheel angle vs outer wheel angle
 
-#plot_error_in_inner_wheel_angle(outer_wheel_angles, angle_diff, ackermann_deg, distance, R_values)
+plot_error_in_inner_wheel_angle(outer_wheel_angles, angle_diff, ackermann_deg, distance, R_values)
 
 
 ##################################################
@@ -375,7 +375,7 @@ plot_delta_toe_vs_dt(dt_values,dval,ackermann_deg)
 ###################################################
 #Plot 5: Turn plot, showing values at a specific outer turn radius
 
-test_outer_r = 8
+test_outer_r = 7.37
 
 r_range = np.linspace(6,20,100)
 
@@ -396,8 +396,8 @@ print('t (tierod length) = ',round(t,3), 'm')
 print('k (distance between kingpin and pickup point) = ',round(k,3), 'm')
 print()
 print('Static Coordinates of tierod connections (origin at outer kingpin):')
-print('Outer Connection:',round(OuterConnection[0],4), round(OuterConnection[1],4), '   4 d.p.')
-print('Inner Connection:',round(InnerConnection[0],4), round(InnerConnection[1],4), '   4 d.p.')
+print('Outer Connection:',round(OuterConnection[0],6), round(OuterConnection[1],4), '   4 d.p.')
+print('Inner Connection:',round(InnerConnection[0],6), round(InnerConnection[1],4), '   4 d.p.')
 print()
 print('Regs dictate we must be able to achieve an OUTER turn radius of 8m without contacting aeroshell/body.')
 
