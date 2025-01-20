@@ -93,7 +93,6 @@ def true_inner(outer, k, t, pcd,wheel_base):
 
     R_values = wheel_base/np.tan(np.radians(outer))
     
-    
     # Calculate the corresponding theta4 value using the Freudenstein equation
     theta4 = freudenstein_equation(outer, pcd, k, t, k)
     
@@ -103,13 +102,24 @@ def true_inner(outer, k, t, pcd,wheel_base):
     return true_inner_wheel_angle, R_values
 
 def ideal_inner(outer, wheel_base, wheel_track):
-    outer_rad = np.radians(outer)
     
-    R = wheel_base/np.tan(outer_rad)
+    R_inner = radius_calc(outer,wheel_base,wheel_track)[2] 
     
-    inner_rad = np.arctan(wheel_base/(R - wheel_track))
+    inner_rad = np.arctan(wheel_base/(R_inner))
     inner_deg = np.degrees(inner_rad)
-    return inner_deg, R
+    
+    R_central = radius_calc(outer,wheel_base,wheel_track)[1]
+    
+    return inner_deg, R_central
+
+def radius_calc(outer,wheel_base,wheel_track):
+    R_outer = wheel_base/np.tan(np.radians(outer))
+    
+    R_centre = R_outer - wheel_track/2
+    
+    R_inner = R_outer - wheel_track
+    
+    return R_outer, R_centre, R_inner
 
 def calculate_delta_toe(dt, d, ackermann_deg):
     a_rad = np.radians(ackermann_deg)
@@ -258,7 +268,7 @@ plot_four_bar_linkage(freeze_o, freeze_i,ackermann_deg, L1, L2, L3, L4)
 
 #####################
 
-steering_range = 15 #steering angle plot range / degrees
+steering_range = 12 #steering angle plot range / degrees
 
 outer_wheel_angles = np.linspace(0, steering_range, 100)
 
@@ -284,45 +294,63 @@ plot_inner_wheel_angles(outer_wheel_angles, true_inner_wheel_angles, ideal_inner
 
 plot_error_in_inner_wheel_angle(outer_wheel_angles, angle_diff, ackermann_deg, distance, R_values)
 
-
-##########################################
+##################################################
+#Plot 4: Toe vs change in tierod length
 
 dt_values=np.arange(0,0.01,0.001)
 
 dval = [0.055,0.06,0.07,0.08,0.09,0.10,0.11,0.12,0.13,0.14,0.15]
 
-# Call the function to plot the graph
-
 plot_delta_toe_vs_dt(dt_values,dval,ackermann_deg)
 
 #Last Year:
-# dt=0.001m, change in wheel angle = 0.368 degrees
+# d=0.055m. For dt=0.001m, change in wheel angle = 0.368 degrees
 
 ##################################################
-#Test for a specific outer angle:
+##################################################
 
-outer_test = 10
+#Run calcs for a specific outer angle:
+
+outer_test = 9.6
+
+### Limiting case for regs = ~ 9.6 degrees (i.e for outer radius = 8m)
 
 ideal_inner_test = ideal_inner(outer_test, wheel_base, wheel_track)
 true_inner_test = true_inner(outer_test, k, t, pivot_centre_distance,wheel_base)
+error = true_inner_test[0] - ideal_inner_test[0]
 
+inner_r = radius_calc(outer_test,wheel_base,wheel_track)[2]
+central_r = radius_calc(outer_test,wheel_base,wheel_track)[1]
+outer_r = radius_calc(outer_test,wheel_base,wheel_track)[0]
+
+##NOTE - Regulations dictate we must be able to achieve an OUTER turn radus of 8m without contacting aeroshell.
+
+print('Run code/plotting functions for given design parameters a and d.')
+print()
 print('a (ackermann angle):', round(ackermann_deg,3),'degrees')
 print('d (distance of pickup point behind front track) = ', round(distance,3),'m')
 print('w (pivot centre distance) = ',round(pivot_centre_distance,3), 'm')
 print('t (tierod length) = ',round(t,3), 'm')
 print('k (distance between kingpin and pickup point) = ',round(k,3), 'm')
 print()
-
-
 print('Static Coordinates of tierod connections:')
 print('Outer Connection:',OuterConnection)
 print('Inner Connection:',InnerConnection)
-
+print()
+print('--------------------------------------------------')
+print()
+print('Running calcs for a specific outer wheel angle:')
 print()
 print('For an outer angle of', round(outer_test,3), 'degrees')
 print('Geometric ideal inner wheel angle:', round(ideal_inner_test[0],3), 'degrees')
-print('True inner wheel angle:', round(true_inner_test[0],3), 'degrees')
-
+print('Actual inner wheel angle:', round(true_inner_test[0],3), 'degrees')
+print('Error in inner wheel angle:', round(error,3), 'degrees')
+print()
+print('Inner wheel turn radius:', round(inner_r,3), 'm')
+print('Central turn radius:', round(central_r,3), 'm')
+print('Outer wheel turn radius:', round(outer_r,3), 'm')
+print()
+print('Regs dictate we must be able to achieve an OUTER turn radius of 8m without contacting aeroshell.')
 
 #Throughout, we assume the outer wheel is always at the ideal angle, and the inner angle is what deviates from ideal.
 
