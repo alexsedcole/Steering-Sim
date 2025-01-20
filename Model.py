@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math as mt
 
-#Our parameters:
+##########################################
+############## Our parameters: ###########
 
 wheel_base = 1.350  #recently increased from 1300mm to 1350mm
 wheel_track = 0.5
@@ -10,17 +11,11 @@ wheel_track = 0.5
 wheel_offset = 0.125
 pivot_centre_distance = wheel_track - 2*wheel_offset
 
-standard_ackermann = np.arctan((0.5*pivot_centre_distance)/wheel_base)  # in rad
-
-#Here, could use standard ackermann value, OR select one to minimize error for inner wheel angle.
-
-#ackermann_deg = np.degrees(standard_ackermann)  
-
-ackermann_deg = 16.0
+ackermann_deg = 15
 
 ackermann_rad = np.radians(ackermann_deg)  
 
-distance = 0.09  #Select this.
+distance = 0.09  
 
 #larger D has the effect of increasing the toe sensitivity, and reducing the difference between the inner and outer wheel angle
 
@@ -64,7 +59,7 @@ InnerConnection = [ round(pivot_centre_distance -u ,4), round(-distance,4)]
 ##########################################################################################
 ##########################################################################################
 
-#Calculation functions:
+############# Calculation functions ###############
 
 def freudenstein_equation(outer_turn_angle, L1, L2, L3, L4):
     
@@ -103,6 +98,8 @@ def true_inner(outer, k, t, pcd,wheel_base):
 
 def ideal_inner(outer, wheel_base, wheel_track):
     
+    #treat this function with some caution for small radii - it is a simplification.
+    
     R_inner = radius_calc(outer,wheel_base,wheel_track)[2] 
     
     inner_rad = np.arctan(wheel_base/(R_inner))
@@ -113,6 +110,9 @@ def ideal_inner(outer, wheel_base, wheel_track):
     return inner_deg, R_central
 
 def radius_calc(outer,wheel_base,wheel_track):
+    
+  
+    
     R_outer = wheel_base/np.tan(np.radians(outer))
     
     R_centre = R_outer - wheel_track/2
@@ -120,6 +120,23 @@ def radius_calc(outer,wheel_base,wheel_track):
     R_inner = R_outer - wheel_track
     
     return R_outer, R_centre, R_inner
+
+def angle_from_R(r_outer,wheel_base,wheel_track):
+    
+    #this function uses more accurate trig to find the inner turn radius (more important for small radii), using also the true inner wheel angle.
+    
+    outer_angle = np.degrees(np.arctan(wheel_base/r_outer))
+    
+    print('Outer angle:',outer_angle)
+    
+    true_inner_angle = true_inner(outer_angle, k, t, pivot_centre_distance,wheel_base)[0]
+
+    b = 90 + outer_angle - true_inner_angle
+    c = 90 + true_inner_angle - outer_angle
+    
+    R_inner = np.sin(np.radians(b))*(  r_outer -((wheel_track/np.sin(np.radians(c)))*np.sin(np.radians(90-true_inner_angle))) )
+    
+    return R_inner,true_inner_angle, outer_angle
 
 def calculate_delta_toe(dt, d, ackermann_deg):
     a_rad = np.radians(ackermann_deg)
@@ -135,7 +152,7 @@ def calculate_delta_toe(dt, d, ackermann_deg):
     deltaT_deg = np.degrees(deltaT_rad)
     return deltaT_deg
 
-#Plotting functions:
+############ Plotting functions ###################
 
 def plot_four_bar_linkage(turn_angle, theta4, ackermann_deg, L1, L2, L3, L4):
     
@@ -205,7 +222,7 @@ def plot_inner_wheel_angles(outer_wheel_angles, true_inner_wheel_angles, ideal_i
     ax2.set_xlim(ax1.get_xlim())
     ax2.set_xticks(outer_wheel_angles[::10])
     ax2.set_xticklabels([f'{r:.2f}' for r in R_values[::10]])
-    ax2.set_xlabel('Corresponding turn radius (m)')
+    ax2.set_xlabel('Outer turn radius (m)')
 
     plt.show()
 
@@ -227,7 +244,7 @@ def plot_error_in_inner_wheel_angle(outer_wheel_angles, angle_diff, ackermann_de
     ax2.set_xlim(ax.get_xlim())
     ax2.set_xticks(outer_wheel_angles[::10])
     ax2.set_xticklabels([f'{r:.2f}' for r in R_values[::10]])
-    ax2.set_xlabel('Corresponding turn radius (m)')
+    ax2.set_xlabel('Outer turn radius (m)')
 
     plt.show()
 
@@ -249,8 +266,54 @@ def plot_delta_toe_vs_dt(dt_values, dval, ackermann_deg):
     
     plt.show()
 
+def crit_turn_plot(wheel_base, k, t, pivot_centre_distance, test_outer_r,r_range):
+    outer_radii = r_range
+    outer_turn_angles = [np.degrees(np.arctan(wheel_base / r)) for r in outer_radii]
+    inner_turn_angles = [true_inner(angle, k, t, pivot_centre_distance, wheel_base)[0] for angle in outer_turn_angles]
+    inner_turn_radii = [wheel_base / np.tan(np.radians(angle)) for angle in inner_turn_angles]
+
+    fig, ax1 = plt.subplots()
+
+    ax1.plot(outer_radii, inner_turn_angles, 'b-', label='Inner Wheel Angle')
+    ax1.set_xlabel('Outer Turn Radius (m)')
+    ax1.set_ylabel('Inner Wheel Angle (degrees)', color='b')
+    ax1.tick_params('y', colors='b')
+
+    # Mark the inner turn angle and radius for an outer turn radius of 8m
+    outer_angle = np.degrees(np.arctan(wheel_base / test_outer_r))
+    inner_angle = true_inner(outer_angle, k, t, pivot_centre_distance, wheel_base)[0]
+    inner_radius = wheel_base / np.tan(np.radians(inner_angle))
+    ax1.axvline(x=test_outer_r, color='r', linestyle='--', label=f'Outer Radius = {test_outer_r}m')
+    ax1.axhline(y=inner_angle, color='g', linestyle='--')
+
+    # Add text box with inner angle, radius, outer angle, and ackermann value
+    textstr = f'a = {ackermann_deg:.2f}°\nFor Outer Radius = {test_outer_r}m:\nOuter Angle = {outer_angle:.2f}°\nInner Angle = {inner_angle:.2f}°\nInner Radius = {inner_radius:.2f}m'
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    ax1.text(0.65, 0.95, textstr, transform=ax1.transAxes, fontsize=10,
+             verticalalignment='top', bbox=props)
+
+    ax2 = ax1.twiny()
+    ax2.set_xlim(ax1.get_xlim())
+    ax2.set_xticks(outer_radii[::10])
+    ax2.set_xticklabels([f'{angle:.2f}' for angle in outer_turn_angles[::10]])
+    ax2.set_xlabel('Outer Wheel Angle (degrees)')
+
+    ax3 = ax1.twinx()
+    ax3.set_ylim(ax1.get_ylim())
+    ax3.set_yticks(inner_turn_angles[::10])
+    ax3.set_yticklabels([f'{wheel_base / np.tan(np.radians(angle)):.2f}' for angle in inner_turn_angles[::10]])
+    ax3.set_ylabel('Inner Turn Radius (m)', color='m')
+    ax3.tick_params('y', colors='m')
+
+    fig.tight_layout()
+    plt.title('Inner Wheel Angle as a Function of Outer Turn Radius')
+    
+    plt.show()
+
 ####################################################
-#Plot 1: Diagram of four-bar linkage
+####################################################
+
+####### Plot 1: Diagram of four-bar linkage ##########
 
 L1 = pivot_centre_distance  # Length of bar 1
 L2 = k  
@@ -284,15 +347,18 @@ angle_diff = [  (true_inner_wheel_angles[i] - ideal_inner_wheel_angles[i]) for i
 
 R_values = [ideal_inner(angle, wheel_base, wheel_track)[1] for angle in outer_wheel_angles]
 
+
 #######################
 #Plot 2: True/ideal inner wheel angle vs outer wheel angle
 
 plot_inner_wheel_angles(outer_wheel_angles, true_inner_wheel_angles, ideal_inner_wheel_angles, ackermann_deg, distance, R_values)
 
+
 ########################################
 #Plot 3: Error in inner wheel angle vs outer wheel angle
 
-plot_error_in_inner_wheel_angle(outer_wheel_angles, angle_diff, ackermann_deg, distance, R_values)
+#plot_error_in_inner_wheel_angle(outer_wheel_angles, angle_diff, ackermann_deg, distance, R_values)
+
 
 ##################################################
 #Plot 4: Toe vs change in tierod length
@@ -306,57 +372,36 @@ plot_delta_toe_vs_dt(dt_values,dval,ackermann_deg)
 #Last Year:
 # d=0.055m. For dt=0.001m, change in wheel angle = 0.368 degrees
 
-##################################################
-##################################################
+###################################################
+#Plot 5: Turn plot, showing values at a specific outer turn radius
 
-#Run calcs for a specific outer angle:
+test_outer_r = 8
 
-outer_test = 9.6
+r_range = np.linspace(6,20,100)
 
-### Limiting case for regs = ~ 9.6 degrees (i.e for outer radius = 8m)
+crit_turn_plot(wheel_base, k, t, pivot_centre_distance,test_outer_r,r_range)
 
-ideal_inner_test = ideal_inner(outer_test, wheel_base, wheel_track)
-true_inner_test = true_inner(outer_test, k, t, pivot_centre_distance,wheel_base)
-error = true_inner_test[0] - ideal_inner_test[0]
+#note, these calcs demonstrate the true inner radius 
+#for small turn radii, Ro - Ri becomes more significantly different than the wheel track.
 
-inner_r = radius_calc(outer_test,wheel_base,wheel_track)[2]
-central_r = radius_calc(outer_test,wheel_base,wheel_track)[1]
-outer_r = radius_calc(outer_test,wheel_base,wheel_track)[0]
-
-##NOTE - Regulations dictate we must be able to achieve an OUTER turn radus of 8m without contacting aeroshell.
+################# Output #######################
 
 print('Run code/plotting functions for given design parameters a and d.')
 print()
 print('a (ackermann angle):', round(ackermann_deg,3),'degrees')
 print('d (distance of pickup point behind front track) = ', round(distance,3),'m')
-print('w (pivot centre distance) = ',round(pivot_centre_distance,3), 'm')
+print()
+print('w (pivot centre distance) = ',round(pivot_centre_distance,3), 'm - note, unaffected by a or d')
 print('t (tierod length) = ',round(t,3), 'm')
 print('k (distance between kingpin and pickup point) = ',round(k,3), 'm')
 print()
-print('Static Coordinates of tierod connections:')
-print('Outer Connection:',OuterConnection)
-print('Inner Connection:',InnerConnection)
+print('Static Coordinates of tierod connections (origin at outer kingpin):')
+print('Outer Connection:',round(OuterConnection[0],4), round(OuterConnection[1],4), '   4 d.p.')
+print('Inner Connection:',round(InnerConnection[0],4), round(InnerConnection[1],4), '   4 d.p.')
 print()
-print('--------------------------------------------------')
-print()
-print('Running calcs for a specific outer wheel angle:')
-print()
-print('For an outer angle of', round(outer_test,3), 'degrees')
-print('Geometric ideal inner wheel angle:', round(ideal_inner_test[0],3), 'degrees')
-print('Actual inner wheel angle:', round(true_inner_test[0],3), 'degrees')
-print('Error in inner wheel angle:', round(error,3), 'degrees')
-print()
-print('Inner wheel turn radius:', round(inner_r,3), 'm')
-print('Central turn radius:', round(central_r,3), 'm')
-print('Outer wheel turn radius:', round(outer_r,3), 'm')
-print()
-print('Regs dictate we must be able to achieve an OUTER turn radius of 8m without contacting aeroshell.')
+print('Regs dictate we must be able to achieve an OUTER turn radius of 8m without contacting aeroshell/body.')
 
 #Throughout, we assume the outer wheel is always at the ideal angle, and the inner angle is what deviates from ideal.
-
-# Calculate ideal inner wheel angles based on Ackermann's formula
-#Defining the outer wheel as the origin - i.e R is the distance between COR and outer wheel (not central axis of car)
-#So location of inner wheel is R - wheel_track
 
 #We expect that the difference between the ideal and true inner wheel angle is broadly indicative of cornering losses...
 
