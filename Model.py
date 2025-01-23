@@ -8,9 +8,10 @@ import matplotlib.pyplot as plt
 wheel_base = 1.350  #recently increased from 1300mm to 1350mm
 wheel_track = 0.5
 
-pivot_centre_distance = 0.315
+pivot_centre_distance = 0.305
+#was 315 but mount slightly modified
 
-#wheel offset = 92.5mm
+#wheel offset = 97.5mm
 
 #Last year's optimisation model: a = 11.677 degrees
 #My model suggests a = 16.7 degrees is optimal
@@ -46,7 +47,7 @@ distance = 0.09
 # #ackermann_deg = np.rad2deg(standard_ackermann)
 # ############
 
-# ackermann_deg = 15  # 15 is optimal value, from report
+# ackermann_deg = 14.97  # 15 is optimal value, from report
 
 # ackermann_rad = np.radians(ackermann_deg)
 
@@ -185,13 +186,13 @@ def plot_four_bar_linkage(turn_angle, theta4, ackermann_deg, L1, L2, L3, L4):
     plt.plot([A[0], B[0]], [A[1], B[1]], 'ro-')
     plt.plot([B[0], D[0]], [B[1], D[1]], 'go-')
     plt.plot([D[0], C[0]], [D[1], C[1]], 'bo-')
-    plt.plot([C[0], A[0]], [C[1], A[1]], 'ko-')
+    #plt.plot([C[0], A[0]], [C[1], A[1]], 'ko-')
     
     # Label the bars
     plt.text((A[0] + B[0]) / 2 + 0.03, (A[1] + B[1]) / 2, 'L2 = k', fontsize=12, ha='center')
     plt.text((B[0] + D[0]) / 2, (B[1] + D[1]) / 2 + 0.005, f'L3 = t = {t:.4f}', fontsize=12, ha='center')
     plt.text((D[0] + C[0]) / 2 - 0.03, (D[1] + C[1]) / 2, 'L4 = k', fontsize=12, ha='center')
-    plt.text((C[0] + A[0]) / 2, (C[1] + A[1]) / 2 + 0.005, 'L1 = w', fontsize=12, ha='center')
+    #plt.text((C[0] + A[0]) / 2, (C[1] + A[1]) / 2 + 0.005, 'L1 = w', fontsize=12, ha='center')
     
     # Label the coordinates of the tierod pickup points with their coordinates
     plt.text(A[0] + 0.12, A[1] + 0.01, f'A ({A[0]:.5f}, {A[1]:.5f})', fontsize=12, ha='right')
@@ -201,7 +202,7 @@ def plot_four_bar_linkage(turn_angle, theta4, ackermann_deg, L1, L2, L3, L4):
     
     # Display turn angle, ackermann angle, and value of d in the top corner
     d_value = L2 * np.cos(np.radians(ackermann_deg))
-    plt.text(0.95, 0.95, f'Visualized turn angle: {turn_angle:.2f}°\nAckermann angle: {ackermann_deg:.2f}°\nd = {d_value:.2f} m', fontsize=12, ha='right', va='top', transform=plt.gca().transAxes)
+    plt.text(0.95, 0.95, f'Visualized turn angle: {turn_angle:.2f}°\nAckermann angle: {ackermann_deg:.2f}°\nd = {d_value:.3f} m', fontsize=12, ha='right', va='top', transform=plt.gca().transAxes)
     
     plt.xlabel('X')
     plt.ylabel('Y')
@@ -213,8 +214,8 @@ def plot_four_bar_linkage(turn_angle, theta4, ackermann_deg, L1, L2, L3, L4):
 def plot_inner_wheel_angles(outer_wheel_angles, true_inner_wheel_angles, ideal_inner_wheel_angles, ackermann_deg, distance, R_values):
     fig, ax1 = plt.subplots()
 
-    ax1.plot(outer_wheel_angles, true_inner_wheel_angles, label='True inner wheel angle')
-    ax1.plot(outer_wheel_angles, ideal_inner_wheel_angles, label='Ideal inner wheel angle')
+    ax1.plot(outer_wheel_angles, true_inner_wheel_angles, label='Our geometry')
+    #ax1.plot(outer_wheel_angles, ideal_inner_wheel_angles, label='Ideal inner wheel angle')
     ax1.plot(outer_wheel_angles, outer_wheel_angles, 'k--', label='Parallel steering')  # Dotted line y = x
 
     ax1.set_xlabel('Outer wheel angle (degrees)')
@@ -342,7 +343,7 @@ plot_four_bar_linkage(freeze_o, freeze_i,ackermann_deg, L1, L2, L3, L4)
 
 #####################
 
-steering_range = 12 #steering angle plot range / degrees
+steering_range = 11 #steering angle plot range / degrees
 
 outer_wheel_angles = np.linspace(0, steering_range, 100)
 
@@ -362,7 +363,7 @@ R_values = [ideal_inner(angle, wheel_base, wheel_track)[1] for angle in outer_wh
 #######################
 #Plot 2: True/ideal inner wheel angle vs outer wheel angle
 
-#plot_inner_wheel_angles(outer_wheel_angles, true_inner_wheel_angles, ideal_inner_wheel_angles, ackermann_deg, distance, R_values)
+plot_inner_wheel_angles(outer_wheel_angles, true_inner_wheel_angles, ideal_inner_wheel_angles, ackermann_deg, distance, R_values)
 
 
 ########################################
@@ -376,7 +377,7 @@ plot_error_in_inner_wheel_angle(outer_wheel_angles, angle_diff, ackermann_deg, d
 
 dt_values=np.arange(0,0.01,0.001)
 
-dval = [0.055,0.06,0.07,0.08,0.09,0.10,0.11,0.12,0.13,0.14,0.15]
+dval = [0.055,0.06,0.07,0.08,0.09,0.1,0.11,0.12,0.13]
 
 plot_delta_toe_vs_dt(dt_values,dval,ackermann_deg)
 
