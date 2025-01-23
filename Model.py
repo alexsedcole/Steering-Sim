@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import math as mt
+
 
 ##########################################
 ############## Our parameters: ###########
@@ -8,10 +8,19 @@ import math as mt
 wheel_base = 1.350  #recently increased from 1300mm to 1350mm
 wheel_track = 0.5
 
-wheel_offset = 0.125
-pivot_centre_distance = wheel_track - 2*wheel_offset
+pivot_centre_distance = 0.315
+
+#wheel offset = 92.5mm
+
+#Last year's optimisation model: a = 11.677 degrees
+#My model suggests a = 16.7 degrees is optimal
+
+#So, we will manufacture a slot to allow for both values, to allow for testing.
 
 ackermann_deg = 14
+
+#manufacture 11mm slot for range a=10.695 (0.017) to a=17.28 (0.0280)
+#pretty confident optimal ackermann is in this range...
 
 ackermann_rad = np.radians(ackermann_deg)  
 
@@ -159,6 +168,8 @@ def plot_four_bar_linkage(turn_angle, theta4, ackermann_deg, L1, L2, L3, L4):
     theta2 = -(90 - ackermann_deg) - turn_angle 
     # Convert into angle convention required by function
     
+    t = L3
+    
     # Convert angles to radians
     theta2_rad = np.radians(theta2)
     theta4_rad = np.radians(theta4)
@@ -178,15 +189,15 @@ def plot_four_bar_linkage(turn_angle, theta4, ackermann_deg, L1, L2, L3, L4):
     
     # Label the bars
     plt.text((A[0] + B[0]) / 2 + 0.03, (A[1] + B[1]) / 2, 'L2 = k', fontsize=12, ha='center')
-    plt.text((B[0] + D[0]) / 2, (B[1] + D[1]) / 2 + 0.005, 'L3 = t', fontsize=12, ha='center')
+    plt.text((B[0] + D[0]) / 2, (B[1] + D[1]) / 2 + 0.005, f'L3 = t = {t:.4f}', fontsize=12, ha='center')
     plt.text((D[0] + C[0]) / 2 - 0.03, (D[1] + C[1]) / 2, 'L4 = k', fontsize=12, ha='center')
     plt.text((C[0] + A[0]) / 2, (C[1] + A[1]) / 2 + 0.005, 'L1 = w', fontsize=12, ha='center')
     
     # Label the coordinates of the tierod pickup points with their coordinates
-    plt.text(A[0] + 0.09, A[1] + 0.01, f'A ({A[0]:.3f}, {A[1]:.3f})', fontsize=12, ha='right')
-    plt.text(B[0] +0.08, B[1]-0.02, f'B ({B[0]:.3f}, {B[1]:.3f})', fontsize=12, ha='right')
-    plt.text(C[0], C[1]+0.01, f'C ({C[0]:.3f}, {C[1]:.3f})', fontsize=12, ha='right')
-    plt.text(D[0], D[1] -0.02, f'D ({D[0]:.3f}, {D[1]:.3f})', fontsize=12, ha='right')
+    plt.text(A[0] + 0.12, A[1] + 0.01, f'A ({A[0]:.5f}, {A[1]:.5f})', fontsize=12, ha='right')
+    plt.text(B[0] +0.12, B[1]-0.02, f'B ({B[0]:.5f}, {B[1]:.5f})', fontsize=12, ha='right')
+    plt.text(C[0], C[1]+0.01, f'C ({C[0]:.5f}, {C[1]:.5f})', fontsize=12, ha='right')
+    plt.text(D[0] +0.03, D[1] -0.02, f'D ({D[0]:.5f}, {D[1]:.5f})', fontsize=12, ha='right')
     
     # Display turn angle, ackermann angle, and value of d in the top corner
     d_value = L2 * np.cos(np.radians(ackermann_deg))
@@ -255,7 +266,7 @@ def plot_delta_toe_vs_dt(dt_values, dval, ackermann_deg):
 
     plt.xlabel('Change in tierod length (mm)')
     plt.ylabel('Change in toe (degrees)')
-    plt.title('Toe as a function of change in tierod length, and design parameter d')
+    plt.title('Toe as a function of tierod length change, and design parameter d')
     plt.legend()
     plt.grid(True)
     
@@ -289,7 +300,7 @@ def crit_turn_plot(wheel_base, k, t, pivot_centre_distance, test_outer_r,r_range
     # Add text box with inner angle, radius, outer angle, and ackermann value
     textstr = f'a = {ackermann_deg:.2f}°\nFor Outer Radius = {test_outer_r}m:\nOuter Angle = {outer_angle:.2f}°\nInner Angle = {inner_angle:.2f}°\nInner Radius = {inner_radius:.2f}m'
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-    ax1.text(0.65, 0.95, textstr, transform=ax1.transAxes, fontsize=10,
+    ax1.text(0.6, 0.95, textstr, transform=ax1.transAxes, fontsize=10,
              verticalalignment='top', bbox=props)
 
     ax2 = ax1.twiny()
@@ -351,7 +362,7 @@ R_values = [ideal_inner(angle, wheel_base, wheel_track)[1] for angle in outer_wh
 #######################
 #Plot 2: True/ideal inner wheel angle vs outer wheel angle
 
-plot_inner_wheel_angles(outer_wheel_angles, true_inner_wheel_angles, ideal_inner_wheel_angles, ackermann_deg, distance, R_values)
+#plot_inner_wheel_angles(outer_wheel_angles, true_inner_wheel_angles, ideal_inner_wheel_angles, ackermann_deg, distance, R_values)
 
 
 ########################################
@@ -375,9 +386,22 @@ plot_delta_toe_vs_dt(dt_values,dval,ackermann_deg)
 ###################################################
 #Plot 5: Turn plot, showing values at a specific outer turn radius
 
-test_outer_r = 7.37
+test_outer_r = 7.35
 
-r_range = np.linspace(6,20,100)
+##For critical 11 degrees inner turn angle (for limiter):
+
+# a = 17.28:  outer angle = 10.23 degrees (ro = 7.48m )
+
+# a = 14: outer angle = 10.41 degrees (r = 7.35)
+
+# a = 10.695: outer angle = 10.56 degrees (ro = 7.24m )
+
+# So, should set the 'outer limiter' at 10.56 degrees.
+# Or just be lazy, and do both at 11. 
+# Outer limiter is essentially a redundancy anyway.
+
+
+r_range = np.linspace(6,15,100)
 
 crit_turn_plot(wheel_base, k, t, pivot_centre_distance,test_outer_r,r_range)
 
@@ -389,15 +413,15 @@ crit_turn_plot(wheel_base, k, t, pivot_centre_distance,test_outer_r,r_range)
 print('Run code/plotting functions for given design parameters a and d.')
 print()
 print('a (ackermann angle):', round(ackermann_deg,3),'degrees')
-print('d (distance of pickup point behind front track) = ', round(distance,3),'m')
+print('d (distance of pickup point behind front track) = ', round(distance,5),'m')
 print()
 print('w (pivot centre distance) = ',round(pivot_centre_distance,3), 'm - note, unaffected by a or d')
-print('t (tierod length) = ',round(t,3), 'm')
-print('k (distance between kingpin and pickup point) = ',round(k,3), 'm')
+print('t (tierod length) = ',round(t,5), 'm     5 d.p.')
+print('k (distance between kingpin and pickup point) = ',round(k,5), 'm')
 print()
 print('Static Coordinates of tierod connections (origin at outer kingpin):')
-print('Outer Connection:',round(OuterConnection[0],6), round(OuterConnection[1],4), '   4 d.p.')
-print('Inner Connection:',round(InnerConnection[0],6), round(InnerConnection[1],4), '   4 d.p.')
+print('Outer Connection:',round(OuterConnection[0],5), round(OuterConnection[1],5), '   5 d.p.')
+print('Inner Connection:',round(InnerConnection[0],5), round(InnerConnection[1],5), '   5 d.p.')
 print()
 print('Regs dictate we must be able to achieve an OUTER turn radius of 8m without contacting aeroshell/body.')
 
